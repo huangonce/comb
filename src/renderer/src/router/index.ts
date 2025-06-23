@@ -36,6 +36,9 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   // Add your navigation guard logic here
+
+  console.log(to)
+  console.log(from)
   next()
 })
 
