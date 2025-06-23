@@ -57,7 +57,7 @@ const updateAPI = {
   // 安装更新
   installUpdate: () => ipcRenderer.invoke('install-update'),
   // 手动检查更新
-  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+  checkForUpdates: () => ipcRenderer.invoke('checking-for-update'),
   removeAllListeners: (channel: string) => {
     ipcRenderer.removeAllListeners(channel)
   }

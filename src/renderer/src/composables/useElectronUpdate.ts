@@ -66,6 +66,8 @@ const useElectronAutoUpdater = (): {
     updateInfo.value = info
     showProgressBar.value = false
 
+    console.log('新版本信息:', info)
+
     // 尝试提取版本号
     let version = '新版本'
     if (info && typeof info === 'object' && 'version' in info) {
@@ -74,11 +76,12 @@ const useElectronAutoUpdater = (): {
 
     showDialog({
       title: '发现新版本',
-      message: `版本 ${version} 已可用，是否立即下载？`,
+      message: `版本 ${version} 已可用，请更新后系统后使用最新功能。`,
       ok: {
         label: '下载更新',
         color: 'primary',
-        icon: 'download'
+        icon: 'download',
+        flat: true
       }
     })
 
@@ -121,7 +124,8 @@ const useElectronAutoUpdater = (): {
       ok: {
         label: '立即安装',
         color: 'primary',
-        icon: 'check_circle'
+        icon: 'check_circle',
+        flat: true
       }
     })
 
@@ -150,7 +154,6 @@ const useElectronAutoUpdater = (): {
       },
       cancel: {
         label: '重试',
-        color: 'primary',
         icon: 'refresh'
       }
     })

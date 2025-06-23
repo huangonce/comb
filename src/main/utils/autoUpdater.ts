@@ -1,5 +1,10 @@
 import { BrowserWindow, ipcMain, dialog, app } from 'electron'
-import { autoUpdater } from 'electron-updater'
+import {
+  autoUpdater,
+  type UpdateInfo,
+  type ProgressInfo,
+  type UpdateDownloadedEvent
+} from 'electron-updater'
 import path from 'path'
 import log from 'electron-log'
 
@@ -34,22 +39,24 @@ export function setupAutoUpdater(mainWindow: BrowserWindow): void {
   })
 
   // 添加手动检查的 IPC 调用
-  ipcMain.handle('check-for-updates', () => {
+  ipcMain.handle('checking-for-update', () => {
     autoUpdater.checkForUpdates()
   })
 
   // 监听更新可用事件
-  autoUpdater.on('update-available', (info) => {
+  autoUpdater.on('update-available', (info: UpdateInfo) => {
+    console.log('检测到更新:', info)
+
     safeSend('update-available', info)
   })
 
   // 监听更新不可用事件
-  autoUpdater.on('update-not-available', (info) => {
+  autoUpdater.on('update-not-available', (info: UpdateInfo) => {
     safeSend('update-not-available', info)
   })
 
   // 监听下载进度事件
-  autoUpdater.on('download-progress', (progress) => {
+  autoUpdater.on('download-progress', (progress: ProgressInfo) => {
     safeSend('download-progress', {
       percent: Math.floor(progress.percent),
       bytesPerSecond: progress.bytesPerSecond,
@@ -59,7 +66,7 @@ export function setupAutoUpdater(mainWindow: BrowserWindow): void {
   })
 
   // 监听更新下载完成事件
-  autoUpdater.on('update-downloaded', (info) => {
+  autoUpdater.on('update-downloaded', (info: UpdateDownloadedEvent) => {
     safeSend('update-downloaded', info)
   })
 
@@ -89,6 +96,8 @@ export function setupDevAutoUpdate(): void {
   if (!app.isPackaged) {
     autoUpdater.updateConfigPath = path.join(__dirname, '../../dev-app-update.yml')
     autoUpdater.forceDevUpdateConfig = true
+
+    console.log('开发环境自动更新配置:', autoUpdater.updateConfigPath)
 
     // // 模拟更新检查
     // setTimeout(() => {
