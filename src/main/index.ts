@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { createWindow } from './utils/createWindow'
+import { setupAutoUpdater, setupDevAutoUpdate } from './utils/autoUpdater'
 
 const appURL = '../renderer/index.html'
 
@@ -22,8 +23,15 @@ app.whenReady().then(() => {
   ipcMain.on('ping', () => console.log('pong'))
 
   const mainWindow = createWindow(appURL)
+
   if (mainWindow) {
     //
+    if (!app.isPackaged) {
+      // 开发环境模拟更新
+      setupDevAutoUpdate()
+    }
+
+    setupAutoUpdater(mainWindow)
   }
 
   app.on('activate', function () {

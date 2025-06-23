@@ -1,5 +1,5 @@
-import { ref, onMounted, onBeforeUnmount, h } from 'vue'
-import { useQuasar, type QDialogOptions } from 'quasar'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { useQuasar, type QDialogOptions, type DialogChainObject } from 'quasar'
 
 type UpdateStatus = 'idle' | 'available' | 'downloading' | 'downloaded' | 'error'
 
@@ -10,15 +10,27 @@ type DownloadProgressHandler = (event: unknown, progress: unknown) => void
 type UpdateDownloadedHandler = (event: unknown, info: unknown) => void
 type UpdateErrorHandler = (event: unknown, error: string) => void
 
-const useElectronAutoUpdater = (): void => {
+const useElectronAutoUpdater = (): {
+  status: typeof status
+  updateInfo: typeof updateInfo
+  progressPercent: typeof progressPercent
+  errorMessage: typeof errorMessage
+  showProgressBar: typeof showProgressBar
+  clearDialog: () => void
+  isElectron: () => boolean
+  checkForUpdates: () => Promise<unknown> | undefined
+  startDownloadUpdate: () => unknown
+  installUpdate: () => unknown
+} => {
   const $q = useQuasar()
 
   const status = ref<UpdateStatus>('idle')
   const updateInfo = ref<unknown>(null)
   const progressPercent = ref(0)
   const errorMessage = ref('')
-  const notificationId = ref<string | null>(null)
   const showProgressBar = ref(false)
+
+  const dialog = ref<DialogChainObject>()
 
   // 存储事件处理函数引用，用于后续清理
   const handlers = {
@@ -33,35 +45,23 @@ const useElectronAutoUpdater = (): void => {
   const isElectron = (): boolean => !!window.api
 
   // 清除当前通知
-  const clearNotification = (): void => {
-    if (notificationId.value) {
-      Notification.remove(notificationId.value)
-      notificationId.value = null
-    }
+  const clearDialog = (): void => {
+    dialog.value?.hide()
   }
 
   // 显示通知
-  const showNotification = (options: QDialogOptions): void => {
-    const d = $q
-      .dialog({
-        ...options
-      })
-      .onOk(() => {
-        // console.log('>>>> OK')
-      })
-      .onOk(() => {
-        // console.log('>>>> second OK catcher')
-      })
-      .onCancel(() => {
-        // console.log('>>>> Cancel')
-      })
-      .onDismiss(() => {
-        // console.log('I am triggered on both OK and Cancel')
-      })
+  const showDialog = (options: QDialogOptions): void => {
+    clearDialog()
+
+    dialog.value = $q.dialog({
+      ...options,
+      dark: $q.dark.isActive,
+      persistent: true
+    })
   }
 
   // 显示可用更新通知
-  const showUpdateAvailableNotification = (info: unknown): void => {
+  const showUpdateAvailableDialog = (info: unknown): void => {
     status.value = 'available'
     updateInfo.value = info
     showProgressBar.value = false
@@ -72,58 +72,41 @@ const useElectronAutoUpdater = (): void => {
       version = (info as { version: string }).version
     }
 
-    showNotification({
+    showDialog({
       title: '发现新版本',
-      content: `版本 ${version} 已可用，是否立即下载？`,
-      footer: () =>
-        h(Space, null, {
-          default: () => [
-            h(
-              Button,
-              {
-                type: 'secondary',
-                size: 'small',
-                onClick: () => clearNotification(),
-                icon: () => h(IconClose)
-              },
-              { default: () => '稍后' }
-            ),
-            h(
-              Button,
-              {
-                type: 'primary',
-                size: 'small',
-                onClick: () => {
-                  clearNotification()
-                  window.api.startDownloadUpdate()
-                },
-                icon: () => h(IconDownload)
-              },
-              { default: () => '下载更新' }
-            )
-          ]
-        })
+      message: `版本 ${version} 已可用，是否立即下载？`,
+      ok: {
+        label: '下载更新',
+        color: 'primary',
+        icon: 'download'
+      }
+    })
+
+    dialog.value?.onOk(() => {
+      clearDialog()
+      window.api.startDownloadUpdate()
     })
   }
 
   // 显示无更新通知
-  const showNoUpdateNotification = () => {
+  const showNoUpdateNotify = (): void => {
     status.value = 'idle'
     showProgressBar.value = false
-    clearNotification()
 
-    Notification.success({
-      title: '已是最新版本',
-      content: '当前应用已是最新版本',
-      duration: 3000,
-      closable: true,
-      position: 'bottomRight'
+    $q.notify({
+      progress: true,
+      message: '当前已是最新版本',
+      icon: 'info',
+      color: 'white',
+      textColor: 'primary',
+      timeout: 3000
     })
   }
 
   // 显示下载完成通知
-  const showUpdateDownloadedNotification = (info: unknown) => {
+  const showUpdateDownloadedDialog = (info: unknown): void => {
     status.value = 'downloaded'
+    updateInfo.value = info
     showProgressBar.value = false
 
     // 尝试提取版本号
@@ -132,42 +115,24 @@ const useElectronAutoUpdater = (): void => {
       version = (info as { version: string }).version
     }
 
-    showNotification({
+    showDialog({
       title: '更新已下载完成',
-      content: `版本 ${version} 已下载完成，是否立即安装？`,
-      footer: () =>
-        h(Space, null, {
-          default: () => [
-            h(
-              Button,
-              {
-                type: 'secondary',
-                size: 'small',
-                onClick: () => clearNotification(),
-                icon: () => h(IconClose)
-              },
-              { default: () => '稍后' }
-            ),
-            h(
-              Button,
-              {
-                type: 'primary',
-                size: 'small',
-                onClick: () => {
-                  clearNotification()
-                  window.api.installUpdate()
-                },
-                icon: () => h(IconCheckCircleFill)
-              },
-              { default: () => '安装并重启' }
-            )
-          ]
-        })
+      message: `版本 ${version} 已下载完成，是否立即安装？`,
+      ok: {
+        label: '立即安装',
+        color: 'primary',
+        icon: 'check_circle'
+      }
+    })
+
+    dialog.value?.onOk(() => {
+      clearDialog()
+      window.api.installUpdate()
     })
   }
 
   // 显示错误通知
-  const showErrorNotification = (error: string): void => {
+  const showErrorDialog = (error: string): void => {
     status.value = 'error'
     errorMessage.value = error
     showProgressBar.value = false
@@ -175,48 +140,39 @@ const useElectronAutoUpdater = (): void => {
     // 截断过长的错误信息
     const truncatedError = error.length > 100 ? `${error.substring(0, 100)}...` : error
 
-    showNotification({
-      title: '更新失败',
-      content: `错误: ${truncatedError}`,
-      footer: () =>
-        h(Space, null, {
-          default: () => [
-            h(
-              Button,
-              {
-                type: 'secondary',
-                size: 'small',
-                onClick: () => clearNotification(),
-                icon: () => h(IconClose)
-              },
-              { default: () => '关闭' }
-            ),
-            h(
-              Button,
-              {
-                type: 'primary',
-                size: 'small',
-                onClick: () => {
-                  clearNotification()
-                  window.api.checkForUpdates()
-                },
-                icon: () => h(IconRefresh)
-              },
-              { default: () => '重试' }
-            )
-          ]
-        })
+    showDialog({
+      title: '更新错误',
+      message: `发生错误: ${truncatedError}`,
+      ok: {
+        label: '关闭',
+        color: 'secondary',
+        icon: 'close'
+      },
+      cancel: {
+        label: '重试',
+        color: 'primary',
+        icon: 'refresh'
+      }
     })
+
+    dialog.value
+      ?.onOk(() => {
+        clearDialog()
+      })
+      .onCancel(() => {
+        clearDialog()
+        window.api.checkForUpdates()
+      })
   }
 
   // 事件处理：更新可用
   const handleUpdateAvailable: UpdateAvailableHandler = (_event, info) => {
-    showUpdateAvailableNotification(info)
+    showUpdateAvailableDialog(info)
   }
 
   // 事件处理：无更新
   const handleUpdateNotAvailable: UpdateNotAvailableHandler = () => {
-    showNoUpdateNotification()
+    showNoUpdateNotify()
   }
 
   // 事件处理：下载进度
@@ -234,26 +190,26 @@ const useElectronAutoUpdater = (): void => {
 
     console.log(`下载进度: ${progressPercent.value}%`)
     // progressBarElement.value = createProgressBar(percent)
-    // showProgressNotification(percent)
+    // showProgressDialog(percent)
   }
 
   // 事件处理：下载完成
   const handleUpdateDownloaded: UpdateDownloadedHandler = (_event, info) => {
-    showUpdateDownloadedNotification(info)
+    showUpdateDownloadedDialog(info)
   }
 
   // 事件处理：错误
   const handleUpdateError: UpdateErrorHandler = (_event, error) => {
-    showErrorNotification(error)
+    showErrorDialog(error)
   }
 
-  const init = () => {
+  const init = (): void => {
     if (!isElectron()) {
       console.warn('o_0')
       // 开发环境下模拟更新流程
       // if (import.meta.env.DEV) {
       //   setTimeout(() => {
-      //     showUpdateAvailableNotification({
+      //     showUpdateAvailableDialog({
       //       version: '1.0.1',
       //       releaseDate: new Date().toISOString(),
       //     })
@@ -279,11 +235,11 @@ const useElectronAutoUpdater = (): void => {
     // 初始检查更新
     window.api.checkForUpdates().catch((error) => {
       console.error('检查更新失败:', error)
-      showErrorNotification(`检查更新失败: ${error.message}`)
+      showErrorDialog(`检查更新失败: ${error.message}`)
     })
   }
 
-  const cleanup = () => {
+  const cleanup = (): void => {
     if (!isElectron()) return
 
     // 移除所有事件监听器 - 使用预加载脚本支持的方式
@@ -301,7 +257,7 @@ const useElectronAutoUpdater = (): void => {
     handlers.onUpdateError = null
 
     // 清除通知
-    clearNotification()
+    clearDialog()
     showProgressBar.value = false
   }
 
@@ -315,7 +271,7 @@ const useElectronAutoUpdater = (): void => {
     errorMessage,
     showProgressBar,
 
-    clearNotification,
+    clearDialog,
     isElectron,
 
     checkForUpdates: () => window.api?.checkForUpdates(),
