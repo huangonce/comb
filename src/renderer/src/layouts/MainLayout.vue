@@ -9,8 +9,8 @@ import Content from './main/Content.vue'
 const route = useRoute()
 // const leftDrawerOpen = ref(false)
 const pages = ref([
-  { name: '阿里巴巴国际站', path: '/dashboard/func/alibaba' },
-  { name: '中国制造', path: '/dashboard/func/made-in-china' }
+  { name: '阿里巴巴国际站', path: '/dashboard/collect/alibaba' },
+  { name: '中国制造', path: '/dashboard/collect/made-in-china' }
 ])
 
 // const toggleLeftDrawer = (): void => {

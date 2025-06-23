@@ -3,6 +3,10 @@ import { createRouter, createWebHashHistory, RouteRecordRaw } from 'vue-router'
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
+    redirect: { name: 'DashboardCollectAlibaba' }
+  },
+  {
+    path: '/',
     redirect: { name: 'DashboardOverview' },
     component: () => import('../layouts/MainLayout.vue'),
     children: [
@@ -10,6 +14,16 @@ const routes: RouteRecordRaw[] = [
         path: '/dashboard/overview',
         name: 'DashboardOverview',
         component: () => import('../pages/dashboard/Overview.vue')
+      },
+      {
+        path: '/dashboard/collect/alibaba',
+        name: 'DashboardCollectAlibaba',
+        component: () => import('../pages/dashboard/collect/AlibabaView.vue')
+      },
+      {
+        path: '/dashboard/collect/made-in-china',
+        name: 'DashboardCollectMadeInChina',
+        component: () => import('../pages/dashboard/collect/MadeInChinaView.vue')
       }
     ]
   }

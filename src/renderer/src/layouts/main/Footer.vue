@@ -1,14 +1,17 @@
+<script setup lang="ts">
+import dayjs from 'dayjs'
+import { version } from '../../../../../package.json'
+</script>
+
 <template>
   <q-footer class="bg-grey-3 text-black">
     <q-toolbar>
       <div>
-        <span>2025@ </span>
+        <span>{{ dayjs().format('YYYY') }}@ </span>
         <span>huangonce</span>
       </div>
       <q-space />
-      <div>1</div>
-      <div>2</div>
-      <div>3</div>
+      <div>v{{ version }}</div>
       <!-- <q-toolbar-title>
           <div>Footer</div>
         </q-toolbar-title> -->
