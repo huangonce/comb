@@ -5,7 +5,9 @@ import {
   type ProgressInfo,
   type UpdateDownloadedEvent
 } from 'electron-updater'
+import DOMPurify from 'dompurify'
 import path from 'path'
+import fs from 'fs/promises'
 import log from 'electron-log'
 
 // 配置日志
@@ -13,28 +15,29 @@ log.transports.file.level = 'info'
 autoUpdater.logger = log
 
 // 全局变量跟踪主窗口
-let mainWindowRef: BrowserWindow | null = null
+let mainWindowRef: WeakRef<BrowserWindow> | null = null
 
 // 确保安全发送消息到渲染进程
 function safeSend(channel: string, ...args: unknown[]): void {
-  if (mainWindowRef && !mainWindowRef.isDestroyed()) {
-    mainWindowRef.webContents.send(channel, ...args)
-  } else {
-    log.warn(`无法发送 ${channel} 消息: 主窗口不可用`)
+  const window = mainWindowRef?.deref()
+  if (window && !window.isDestroyed()) {
+    window.webContents.send(channel, ...args)
   }
 }
 
+export enum UpdateChannel {}
+
 export function setupAutoUpdater(mainWindow: BrowserWindow): void {
-  mainWindowRef = mainWindow
+  mainWindowRef = new WeakRef(mainWindow)
 
   // 配置自动更新
   autoUpdater.autoDownload = false
 
   // 主窗口就绪后检查更新
-  mainWindow.webContents.on('did-finish-load', () => {
+  mainWindow.webContents.once('did-finish-load', () => {
     autoUpdater.checkForUpdates().catch((err) => {
       log.error('检查更新失败:', err)
-      safeSend('update-error', err.message)
+      safeSend('update-error', DOMPurify.sanitize(err.message))
     })
   })
 
@@ -87,12 +90,23 @@ export function setupAutoUpdater(mainWindow: BrowserWindow): void {
   ipcMain.handle('install-update', () => {
     autoUpdater.quitAndInstall()
   })
+
+  mainWindow.on('closed', () => {
+    mainWindowRef = null
+  })
 }
 
 // 开发环境模拟更新
-export function setupDevAutoUpdate(): void {
+export async function setupDevAutoUpdate(): Promise<void> {
   if (!app.isPackaged) {
-    autoUpdater.updateConfigPath = path.join(__dirname, '../../dev-app-update.yml')
+    const configPath = path.join(app.getAppPath(), 'dev-app-update.yml')
+    try {
+      await fs.access(configPath)
+      autoUpdater.updateConfigPath = configPath
+    } catch (error) {
+      log.warn('开发环境下未找到更新配置文件:', error)
+    }
+
     autoUpdater.forceDevUpdateConfig = true
 
     // // 模拟更新检查

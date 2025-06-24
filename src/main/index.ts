@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { createWindow } from './utils/createWindow'
-import { setupAutoUpdater, setupDevAutoUpdate } from './utils/autoUpdater'
+import { setupAutoUpdater, setupDevAutoUpdate } from './services/updaterService'
 
 const appURL = '../renderer/index.html'
 
