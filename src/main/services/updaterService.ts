@@ -1,3 +1,4 @@
+// main/services/updaterService.ts
 import { BrowserWindow, ipcMain, dialog, app } from 'electron'
 import {
   autoUpdater,
@@ -11,7 +12,9 @@ import fs from 'fs/promises'
 import log from 'electron-log'
 
 // 配置日志
+// 配置日志
 log.transports.file.level = 'info'
+log.transports.file.maxSize = 10 * 1024 * 1024 // 10MB 日志轮转
 autoUpdater.logger = log
 
 // 全局变量跟踪主窗口
@@ -27,7 +30,7 @@ function safeSend(channel: string, ...args: unknown[]): void {
 
 export enum UpdateChannel {}
 
-export function setupAutoUpdater(mainWindow: BrowserWindow): void {
+export const setupAutoUpdater = (mainWindow: BrowserWindow): void => {
   mainWindowRef = new WeakRef(mainWindow)
 
   // 配置自动更新

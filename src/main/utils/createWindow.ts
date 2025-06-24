@@ -3,6 +3,20 @@ import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import icon from '../../../resources/icon.png?asset'
 
+// 严格 CSP 策略
+const CONTENT_SECURITY_POLICY = `
+  default-src 'self';
+  script-src 'self' 'unsafe-inline';
+  style-src 'self' 'unsafe-inline';
+  img-src 'self' data:;
+  font-src 'self';
+  connect-src 'self' https://api.example.com;
+  frame-src 'none';
+  object-src 'none';
+`
+  .replace(/\s{2,}/g, ' ')
+  .trim()
+
 export const createWindow = (
   url: string,
   options?: Electron.BrowserWindowConstructorOptions
@@ -25,7 +39,11 @@ export const createWindow = (
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({
       responseHeaders: {
-        ...details.responseHeaders
+        ...details.responseHeaders,
+        'Content-Security-Policy': [CONTENT_SECURITY_POLICY],
+        'X-Content-Type-Options': ['nosniff'],
+        'X-Frame-Options': ['DENY'],
+        'Strict-Transport-Security': ['max-age=31536000; includeSubDomains']
       }
     })
   })
