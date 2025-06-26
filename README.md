@@ -32,3 +32,6 @@ $ pnpm build:mac
 # For Linux
 $ pnpm build:linux
 ```
+
+
+npx electron-builder build --win --publish always

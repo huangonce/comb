@@ -1,10 +1,11 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useQuasar, type QDialogOptions, type DialogChainObject } from 'quasar'
+import { type UpdateInfo } from 'electron-updater'
 
 type UpdateStatus = 'idle' | 'available' | 'downloading' | 'downloaded' | 'error'
 
 // 定义事件处理函数类型 - 与预加载脚本完全匹配
-type UpdateAvailableHandler = (event: unknown, info: unknown) => void
+type UpdateAvailableHandler = (event: unknown, info: UpdateInfo) => void
 type UpdateNotAvailableHandler = (event: unknown, info: unknown) => void
 type DownloadProgressHandler = (event: unknown, progress: unknown) => void
 type UpdateDownloadedHandler = (event: unknown, info: unknown) => void
@@ -15,7 +16,6 @@ const useElectronAutoUpdater = (): {
   updateInfo: typeof updateInfo
   progressPercent: typeof progressPercent
   errorMessage: typeof errorMessage
-  showProgressBar: typeof showProgressBar
   clearDialog: () => void
   isElectron: () => boolean
   checkForUpdates: () => Promise<unknown> | undefined
@@ -28,9 +28,8 @@ const useElectronAutoUpdater = (): {
   const updateInfo = ref<unknown>(null)
   const progressPercent = ref(0)
   const errorMessage = ref('')
-  const showProgressBar = ref(false)
 
-  const dialog = ref<DialogChainObject>()
+  const dialog = ref<DialogChainObject | null>()
 
   // 存储事件处理函数引用，用于后续清理
   const handlers = {
@@ -47,6 +46,7 @@ const useElectronAutoUpdater = (): {
   // 清除当前通知
   const clearDialog = (): void => {
     dialog.value?.hide()
+    dialog.value = null
   }
 
   // 显示通知
@@ -64,7 +64,6 @@ const useElectronAutoUpdater = (): {
   const showUpdateAvailableDialog = (info: unknown): void => {
     status.value = 'available'
     updateInfo.value = info
-    showProgressBar.value = false
 
     console.log('新版本信息:', info)
 
@@ -181,19 +180,32 @@ const useElectronAutoUpdater = (): {
   // 事件处理：下载进度
   const handleDownloadProgress: DownloadProgressHandler = (_event, progress) => {
     status.value = 'downloading'
-    showProgressBar.value = true
 
     // 安全地访问 progress 对象的 percent 属性
     let percent = 0
     if (progress && typeof progress === 'object' && 'percent' in progress) {
       percent = Math.floor((progress as { percent: number }).percent)
     }
-
     progressPercent.value = percent / 100
 
     console.log(`下载进度: ${progressPercent.value}%`)
-    // progressBarElement.value = createProgressBar(percent)
-    // showProgressDialog(percent)
+
+    if (progressPercent.value < 100) {
+      if (!dialog.value) {
+        showDialog({
+          message: `下载进度: ${progressPercent.value}%`,
+          progress: true,
+          persistent: true,
+          ok: false
+        })
+      } else {
+        dialog.value.update({
+          message: `下载进度: ${progressPercent.value}%`
+        })
+      }
+    } else {
+      clearDialog()
+    }
   }
 
   // 事件处理：下载完成
@@ -261,7 +273,6 @@ const useElectronAutoUpdater = (): {
 
     // 清除通知
     clearDialog()
-    showProgressBar.value = false
   }
 
   onMounted(() => setTimeout(init, 1000))
@@ -272,7 +283,6 @@ const useElectronAutoUpdater = (): {
     updateInfo,
     progressPercent,
     errorMessage,
-    showProgressBar,
 
     clearDialog,
     isElectron,
