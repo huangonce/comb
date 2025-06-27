@@ -93,7 +93,6 @@ const useElectronAutoUpdater = (): {
   // 显示无更新通知
   const showNoUpdateNotify = (): void => {
     status.value = 'idle'
-    showProgressBar.value = false
 
     $q.notify({
       progress: true,
@@ -109,7 +108,6 @@ const useElectronAutoUpdater = (): {
   const showUpdateDownloadedDialog = (info: unknown): void => {
     status.value = 'downloaded'
     updateInfo.value = info
-    showProgressBar.value = false
 
     // 尝试提取版本号
     let version = '新版本'
@@ -138,7 +136,6 @@ const useElectronAutoUpdater = (): {
   const showErrorDialog = (error: string): void => {
     status.value = 'error'
     errorMessage.value = error
-    showProgressBar.value = false
 
     // 截断过长的错误信息
     const truncatedError = error.length > 100 ? `${error.substring(0, 100)}...` : error
