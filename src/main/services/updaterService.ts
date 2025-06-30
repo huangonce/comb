@@ -1,4 +1,7 @@
-// main/services/updaterService.ts
+/**
+ * 自动更新服务
+ * @module services/updaterService
+ */
 import { BrowserWindow, ipcMain, dialog, app } from 'electron'
 import {
   autoUpdater,
