@@ -35,3 +35,18 @@ $ pnpm build:linux
 
 
 npx electron-builder build --win --publish always
+
+Playwright
+
+
+comb/
+├── src/
+│   ├── main/       # 主进程代码
+│   │   └── index.js
+│   ├── preload/    # 预加载脚本
+│   │   └── index.js
+│   └── renderer/   # 渲染进程代码
+│       ├── index.html
+│       └── main.jsx
+├── electron.vite.config.js  # 配置文件
+└── package.json
